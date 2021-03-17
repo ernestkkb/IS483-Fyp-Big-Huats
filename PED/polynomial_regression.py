@@ -304,7 +304,7 @@ with st.echo():
         st.pyplot(fig)
 
 
-    @st.cache
+    @st.cache(ttl = 3600)
     def read_file ():
         data = pd.read_csv('data.csv', encoding = 'ISO-8859-1')
         return data

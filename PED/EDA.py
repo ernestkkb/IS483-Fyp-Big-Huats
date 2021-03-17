@@ -10,7 +10,7 @@ from scipy import stats
 st.title('Exploratory Data Analysis')
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
-@st.cache
+@st.cache(ttl = 3600)
 def read_file (filename):
     data = pd.read_csv(filename, encoding = 'ISO-8859-1')
     return data
