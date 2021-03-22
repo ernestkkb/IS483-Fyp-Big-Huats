@@ -248,15 +248,22 @@ def app():
     st.subheader('Weekdays > Weekends for Household Products')
     st.text('It is better to have any kind of sale from Monday - Thursday as it has shown that these days have better receptivity compared to Friday - Sunday (Weekend)')
 
+    
+    def read_file2(filename):
+        data = pd.read_csv(filename)
+        return data
+
     st.header('Electronic products')
-    df = read_file('category_price.csv')
+    df = read_file2('category_price.csv')
     st.subheader('Preview of Data')
-    st.dataframe(data.head())
-
-
+    st.dataframe(df.head())
     st.subheader('Data Preprocessing')
 
+
     with st.echo():
+        df['Date_imp'] = pd.to_datetime(df['Date_imp'], format='%Y-%m-%d %H:%M:%S')
+        df['hour'] = df['Date_imp'].dt.hour
+
         df = df[df['condition'] == 'New']
         #Drop columns that are not going to be used for the project
         df = df[df.columns.drop(['condition'])]
@@ -290,12 +297,30 @@ def app():
     sns.set_style("darkgrid")
     st.pyplot()
 
-    #Detect top selling items
-    top = df_clean.groupby('name').size().reset_index(name='counts').nlargest(15,['counts'])
-    top_products = top['name'].tolist()
+
+    #Detect relevant items for analysis
+    top_products = ['JBL Clip2 Portable Speaker',
+                'Yamaha - Natural Sound 5 2-Way All-Weather Outdoor Speakers (Pair) - White"', 
+                'Russound - Acclaim 5 Series 6-1/2 2-Way Indoor/Outdoor Speakers (Pair) - White"',
+                'MCR-B043 30W Bluetooth Wireless Music System (Black)',
+                'Kicker DSC44 4 D-Series 2-Way Car Speakers with 1/2" Tweeters"',
+                'Alpine - 6-1/2 2-Way Component Car Speakers with Poly-Mica Cones (Pair) - Black"',
+                'Details About Alpine 400w 5.25 Typee Coaxial 2way Car Speakers | Spe5000"']
 
     df_clean = df_clean[df_clean['name'].isin(top_products)]
     st.dataframe(df_clean)
+
+    st.subheader('Dropping Price Outliers')
+    from scipy import stats
+    with st.echo():
+        frames = []
+        for i in top_products:
+            test = df_clean[df_clean['name'] == i]
+            test = test[(np.abs(stats.zscore(test['disc_price'])) < 3)]
+            frames.append(test)
+
+        final_df = pd.concat(frames)
+        st.dataframe(final_df)
 
     st.subheader('Price Distribution Plot for top selling products')
     plt.figure(figsize=(30,50))
@@ -309,18 +334,6 @@ def app():
         plot_number = plot_number + 1
     plt.tight_layout()
     st.pyplot()
-
-    st.subheader('Dropping Price Outliers')
-    from scipy import stats
-    with st.echo():
-        frames = []
-        for i in top_products:
-            test = df_clean[df_clean.name.str.contains(i)]
-            test = test[(np.abs(stats.zscore(test['disc_price'])) < 3)]
-            frames.append(test)
-
-        final_df = pd.concat(frames)
-        st.dataframe(final_df)
 
     # Price Distribution Plot for top selling products
     plt.figure(figsize=(30,50))
@@ -336,3 +349,107 @@ def app():
 
     plt.tight_layout()
     st.pyplot()
+
+    #Product Summaries
+    def summary2(name):
+        df = final_df[final_df['name'] == name]
+        grouping = df.groupby(['disc_price']).size()
+        grouping_df = grouping.to_frame().reset_index()
+        grouping_df.columns = ['UnitPrice','Quantity']
+        return pd.DataFrame(grouping_df)
+
+    st.subheader('Number of unique prices per product')
+    for name in top_products:
+        st.text(name)
+        st.dataframe(summary2(name))
+
+    color = ['b-', 'g-', 'r-', 'y-', 'm-', 'c-', 'k-']
+    st.subheader('Price Distribution Plots')
+    def price_distribution_chart_overall(top_products):
+        count = 0
+        for name in top_products:
+            name_df = summary2(name)
+            plt.plot(name_df.UnitPrice, name_df.Quantity, color[count], label=name )
+            count += 1
+            
+        plt.legend(loc='best')
+        plt.show()
+        st.pyplot()
+    price_distribution_chart_overall(top_products)
+
+    st.subheader('Effect of Day of Week on Quantity Sold')
+    def day_df2(data,name):
+        day_qty = pd.DataFrame(data[data['name'] == name].groupby('Day_n').size().reset_index())
+        day_qty.columns = ['day','quantity']
+        return day_qty
+
+    color = ['blue', 'green', 'red', 'yellow', 'magenta', 'cyan', 'black']
+    def day_bar_overall(top_products):
+        fig = plt.figure(figsize=(15, 10))
+        count = 0
+        for name in top_products:
+            ax = fig.add_subplot(111)
+            order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            day_qty = day_df2(final_df,name)
+            st.dataframe(day_qty)
+            ax.bar(x= order, height=day_qty.set_index('day').loc[order].quantity, color = color[count], align='center', alpha = 0.5)
+            count += 1
+        plt.legend()
+        plt.tight_layout()
+        plt.title("Day of week of highest purchase") 
+        plt.show()
+        st.pyplot()
+
+    day_bar_overall(top_products)
+
+    st.subheader('Effect of Hour of Day on Quantity Sold')
+    def df_hour_quantity2(data, name):
+        hr_qty = data[data['name'] == name].groupby('hour').size()
+        hr_qty_df = hr_qty.to_frame().reset_index()
+        hr_qty_df.columns = ['hour', 'quantity']
+        return hr_qty_df
+
+    
+
+    def bar_chart_hour_overall(top_products):
+        fig = plt.figure(figsize=(15, 10))
+        count = 0
+        for name in top_products:
+            ax = fig.add_subplot(111)
+            hr_qty_df = df_hour_quantity2(final_df, name)
+            st.dataframe(hr_qty_df)
+            ax.bar(x= hr_qty_df['hour'], height=hr_qty_df['quantity'], color = color[count], align='center', alpha = 0.5)
+            count += 1
+        plt.legend()
+        plt.tight_layout()
+        plt.xlabel("Hour") 
+        plt.ylabel("Quantity")
+        plt.title("Hour of highest purchase") 
+        plt.show()
+        st.pyplot()
+    bar_chart_hour_overall(top_products)
+
+    st.subheader('Effect of Month on Quantity Sold')
+
+    def df_month_quantity(data, name):
+        month_qty = pd.DataFrame(data[data['name'] == name].groupby('month').size()).reset_index()
+        month_qty.columns = ['month','quantity']
+        return month_qty
+
+    def bar_chart_month_overall(top_products):
+        fig = plt.figure(figsize=(15, 10))
+        count = 0
+        for name in top_products:
+            ax = fig.add_subplot(111)
+            month_qty_df = df_month_quantity(final_df, name)
+            ax.bar(x= month_qty_df['month'], height=month_qty_df['quantity'], color = color[count], align='center', alpha = 0.5)
+            count += 1
+        plt.legend()
+        plt.tight_layout()
+        plt.xlabel("Month") 
+        plt.ylabel("Quantity")
+        plt.title("Month of highest purchase") 
+        plt.show()
+        st.pyplot()
+
+    bar_chart_month_overall(top_products)
