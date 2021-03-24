@@ -242,11 +242,14 @@ def app():
 
     st.header('General Conclusion for Household Products')
     st.subheader('Optimal Timings')
-    st.text('It has been observed that there is increasing demand of items bought between 10am - 12pm and occasionally early afternoons at 2-3pm.')
+    st.text('''It has been observed that there is increasing demand of items bought between 10am - 12pm 
+and occasionally early afternoons at 2-3pm.''')
     st.subheader('Pricing Strategy')
-    st.text('The second half of the year (from September/October) is often a good period to steadily increase your prices while keeping the quantity of items bought high.')
+    st.text('''The second half of the year (from September/October) is often a good period to steadily 
+increase your prices while keeping the quantity of items bought high.''')
     st.subheader('Weekdays > Weekends for Household Products')
-    st.text('It is better to have any kind of sale from Monday - Thursday as it has shown that these days have better receptivity compared to Friday - Sunday (Weekend)')
+    st.text('''It is better to have any kind of sale from Monday - Thursday as it has shown that these 
+days have better receptivity compared to Friday - Sunday (Weekend)''')
 
     
     def read_file2(filename):
@@ -399,6 +402,8 @@ def app():
         plt.title("Day of week of highest purchase") 
         plt.show()
         st.pyplot()
+        st.text('''Slight spike on Tuesdays across all products. Sales increase from 
+Friday to Sunday generally, indicating the weekend might be a good time to conduct sales.''')
 
     day_bar_overall(top_products)
 
@@ -427,6 +432,14 @@ def app():
         plt.title("Hour of highest purchase") 
         plt.show()
         st.pyplot()
+        st.text('''Sales remain high even in the wee hours, indicating people might be 
+increasingly scrolling through sites and making purchases at late hours. This supports a 
+study by John Lewis Partnership Card and released by BBC that "More consumers seem to be 
+shopping online late at night and in the early hours of the morning, say retailers. New 
+data from the John Lewis Partnership Card shows that one in 15 purchases are now made 
+between the hours of midnight and 06:00. The research shows that the number of purchases 
+made in this period rose by 23% in 2018, compared with 2017." Apart from this finding, 
+we find that 3pm and 5pm have higher levels of purchase too for most products''')
     bar_chart_hour_overall(top_products)
 
     st.subheader('Effect of Month on Quantity Sold')
@@ -451,5 +464,10 @@ def app():
         plt.title("Month of highest purchase") 
         plt.show()
         st.pyplot()
+        st.text('''Based on this data from March till December, we can see that there are generally 
+higher number of purchases in months July and August for each item. We can attribute this 
+to the holiday season coming to an end, where both students & working adults get back to 
+school / work and manufacturers are found to generally promote products during this 
+back-to-school/work period''')
 
     bar_chart_month_overall(top_products)
