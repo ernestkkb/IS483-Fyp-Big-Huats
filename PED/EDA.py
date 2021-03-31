@@ -7,9 +7,21 @@ from IPython.display import display, HTML
 import streamlit as st
 from scipy import stats
 
+import plotly.graph_objects as go
+import plotly.express as px
+import plotly.figure_factory as ff
+
+from bokeh.plotting import figure, output_notebook, show
+from bokeh.models.tools import HoverTool
+from bokeh.io import output_notebook
+from bokeh.models import ColumnDataSource
+from bokeh.palettes import cividis, inferno,Spectral3,Spectral4,Spectral5,Spectral6, Spectral7,Category20c
+from bokeh.plotting import figure
+from bokeh.transform import cumsum
+
 #Function Definitions
 
-@st.cache(ttl = 3600)
+@st.cache()
 def read_file (filename):
     data = pd.read_csv(filename, encoding = 'ISO-8859-1')
     return data
@@ -29,18 +41,54 @@ def df_datepricequantity(data, stockID):
     return date_price_qty_df
 
 def price_distribution_chart(data, stockID):
-    data[data['StockCode'] == stockID]['UnitPrice'].plot(linewidth=0.5, figsize=(15,10))
-    st.line_chart(data[data['StockCode'] == stockID]['UnitPrice'])
+    data_selected = data[data['StockCode'] == stockID]
+    
+    fig = figure(
+            title = "Price Distribution Chart",
+             x_axis_label = 'Time',
+             y_axis_label = 'Unit Price',
+             width = 800,
+             height = 400,
+             x_axis_type='datetime'
+            )
+
+    fig.line(data_selected.index,data_selected['UnitPrice'],
+             line_alpha = 0.8,
+             line_width = 2
+            )
+
+    fig.add_tools(HoverTool(
+        tooltips='<font face="Arial" size="3">Date: @x{%F}, Price: @y{0.00}</font>',
+        mode='vline',
+        formatters={'x': 'datetime'}
+    ))
+
+    st.bokeh_chart(fig, use_container_width=True)
 
 def boxplot_month(data, stockID):
-    plt.figure(figsize=(15, 10))
-    fig = sns.boxplot(data=data[data['StockCode'] == stockID], x='Month', y='UnitPrice')
-    st.pyplot()
+    df =data[data['StockCode'] == stockID]
+    fig = go.Figure()
+
+    fig.update_layout(
+        # title="Distribution of price per month",
+        xaxis_title="Months",
+        yaxis_title="Unit Price",
+        font=dict(
+            family="Arial",
+            size=12,
+            color="#0E0D0C"
+        )
+    )
+    fig.add_trace(go.Box(y=df['UnitPrice'], x=df['Month'])) 
+    st.plotly_chart(fig, use_container_width=True)
 
 def boxplot_day(data, stockID):
-    plt.figure(figsize=(15, 10))
-    fig = sns.boxplot(data=data[data['StockCode'] == stockID], x='Weekday Name', y='UnitPrice', order = ['Monday', 'Tuesday', 'Wednesday','Thursday','Friday','Saturday','Sunday']);
-    st.pyplot()
+    order = {"Weekday Name": ['Monday', 'Tuesday', 'Wednesday','Thursday','Friday','Saturday','Sunday']}
+    df =data[data['StockCode'] == stockID]
+    fig = px.box(df, x="Weekday Name", y="UnitPrice",
+            #  title="Distribution of price per day",
+            category_orders=order)    
+    st.plotly_chart(fig, use_container_width=True)
 
 def rolling_mean(data, stockID):
     data_7d = data[data['StockCode'] == stockID]['UnitPrice'].rolling(7, center=True).mean()
@@ -63,14 +111,27 @@ def df_hour_quantity(data, stockID):
     return hr_qty_df
 
 def bar_chart_hour(hr_qty_df):
-    plt.figure(figsize=(15, 10))
-    fig = plt.bar(hr_qty_df['hour'], hr_qty_df['quantity'], color ='maroon',  width = 0.4) 
-    plt.xlabel("Hour") 
-    plt.ylabel("Quantity") 
-    plt.title("Number of items sold per hour") 
-    plt.show()
+    hour = hr_qty_df['hour']
+    quantity = hr_qty_df['quantity']
+    
+    n= len(hour)
+    
+    source = ColumnDataSource(data=dict(hour=hour, quantity=quantity, color=inferno(n)))
+    
+    max_y = max(quantity)
+    
+    p = figure(x_range=(0,23), y_range=(0,max_y), plot_height=500, title="Number of items sold per hour",
+           toolbar_location=None, tools="")
+    
+    p.vbar(x='hour', top='quantity', width=0.9, color = 'color', source=source)
+    
+    p.xgrid.grid_line_color = None
+    p.legend.orientation = "horizontal"
+    p.legend.location = "top_center"
+    
+    p.add_tools(HoverTool(tooltips=[("Hour","@hour"),("Quantity", "@quantity")]))
 
-    st.pyplot() 
+    st.bokeh_chart(p, use_container_width=True)
 
 def df_date_quantity(data, stockID):
     date_qty = pd.DataFrame(data[data['StockCode'] == stockID].groupby(data[data['StockCode'] == stockID].index).size().reset_index())
@@ -78,35 +139,84 @@ def df_date_quantity(data, stockID):
     return date_qty
 
 def bar_chart_date(date_qty):
-    plt.figure(figsize=(15, 10))
-    fig = plt.bar(date_qty['dates'], date_qty['quantity'], color ='maroon',  width = 1.5) 
-    plt.xlabel("Date") 
-    plt.ylabel("Quantity")
-    plt.title("Date of highest purchase") 
-    plt.show()
-    st.pyplot()
+    date_qty['dates']= pd.to_datetime(date_qty['dates'])
+    date = date_qty['dates']
+    quantity = date_qty['quantity']
+    n = len(date)
+    
+    source = ColumnDataSource(data=dict(date=date, quantity=quantity))
+    
+    max_y = max(quantity)
+  
+    p = figure(x_range= (min(date),max(date)),
+               y_range=(0,max_y),
+               plot_height=500,
+               title="Date of highest purchase",
+               x_axis_type = 'datetime',
+               toolbar_location=None, 
+               tools="")
+    
+    p.vbar(x='date', top='quantity', width=0.9, source=source)
+    
+    p.xgrid.grid_line_color = None
+    p.legend.orientation = "horizontal"
+    p.legend.location = "top_center"
+    
+    p.add_tools(HoverTool(
+        tooltips='<font face="Arial" size="3">Date: @x{%F}, Price: @y{0}</font>',
+        mode='vline',
+        formatters={'date': 'datetime'}
+    ))
+
+    st.bokeh_chart(p, use_container_width=True)
 
 def price_chart(data, stockID):
     percentiles = data[data['StockCode'] == stockID]['UnitPrice'].quantile([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, .9, 0.95, 1 ])
-    plt.plot(percentiles)
-    plt.figure(figsize=(15, 10))
-    plt.title('Price Percentile Distribution')
-    plt.xlabel("Percentile") 
-    plt.ylabel("Price") 
-    plt.show()
-    st.line_chart(percentiles)
+    
+    fig = figure(title = "Price Percentile Distribution",
+             x_axis_label = 'Percentile',
+             y_axis_label = 'Price',
+             width = 800,
+             height = 400
+            )
+
+    fig.line(percentiles.index,percentiles,
+             line_alpha = 0.8,
+             line_width = 2
+            )
+
+    fig.add_tools(HoverTool(
+        tooltips='<font face="Arial" size="3">Percentile: @x{0.00}, Price: @y{0.00}</font>',
+        mode='vline'
+    ))
+    
+    st.bokeh_chart(fig, use_container_width=True)
 
 def quartile_barchart(data, stockID):
     data = data[data['StockCode'] == stockID]
     data['Quantile'] = pd.qcut(data['UnitPrice'], q=np.arange(0,1.1,0.1), duplicates='drop')
     df_tempo = pd.DataFrame(data.groupby('Quantile').agg('size').reset_index())
     df_tempo.columns = ['Quantile','Quantity']
+    
+    quantile = df_tempo['Quantile'].tolist()
+    quantile = [str(i) for i in quantile]
+    quantity = df_tempo['Quantity']
+    n = len(quantile)
+    
+    max_y = max(quantity)
+    source = ColumnDataSource(data=dict(quantile=quantile, quantity=quantity, color = cividis(n)))
+    p = figure(x_range=quantile,y_range=(0,max_y), plot_height=500, title="Histogram by Price Percentiles",
+           toolbar_location=None, tools="")
+        
+    p.vbar(x='quantile', top='quantity', width=0.9, color ='color', source=source)
+    
+    p.xgrid.grid_line_color = None
+    p.legend.orientation = "horizontal"
+    p.legend.location = "top_center"
+    
+    p.add_tools(HoverTool(tooltips=[("Quantity", "@quantity")]))
 
-    sns.set(rc={'figure.figsize':(15,10)}, style = 'whitegrid')
-    fig = sns.barplot(x = "Quantile", y = "Quantity", data = df_tempo, palette = "hls")
-    plt.title('Histogram by Price Percentiles')
-    plt.show()
-    st.pyplot()
+    st.bokeh_chart(p, use_container_width=True)
 
 def day_df(data,stockID):
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday"]
@@ -115,14 +225,30 @@ def day_df(data,stockID):
     return day_qty
 
 def day_bar(data, stockID):
-    df = day_df(data,stockID)
-    fig = sns.barplot(x = df.index, y = "quantity", data = df, palette = "hls")
-    st.pyplot()
+    day_qty = day_df(data,stockID)
 
-@st.cache(ttl = 3600, suppress_st_warning=True)
+    weekday = day_qty.index.tolist()
+    quantity = day_qty['quantity']
+    
+    source = ColumnDataSource(data=dict(weekday=weekday, quantity=quantity, color=Spectral7))
+    
+    max_y = max(quantity)
+    p = figure(x_range=weekday, y_range=(0,max_y), plot_height=500, title="Items sold per Day",
+           toolbar_location=None, tools="")
+    
+    p.vbar(x='weekday', top='quantity', width=0.9, color='color', source=source)
+    
+    p.xgrid.grid_line_color = None
+    p.legend.orientation = "horizontal"
+    p.legend.location = "top_center"
+    
+    p.add_tools(HoverTool(tooltips=[("Quantity", "@quantity")]))
+
+    st.bokeh_chart(p, use_container_width=True)
+
+@st.cache(suppress_st_warning=True)
 def app():
     st.title('Exploratory Data Analysis')
-    st.set_option('deprecation.showPyplotGlobalUse', False)
 
     st.header('Household products')
     data = read_file('data.csv')
@@ -228,8 +354,8 @@ def app():
         st.subheader('Distribution of price per day')
         boxplot_day(data, id)
         st.text(product_descriptions[4])
-        st.subheader('Trends in Pricing Strategy')
-        rolling_mean(data, id)
+        # st.subheader('Trends in Pricing Strategy')
+        # rolling_mean(data, id)
         st.text(product_descriptions[5])
         st.subheader('Number of items sold per hour')
         st.dataframe(df_hour_quantity(data, id))
@@ -292,13 +418,10 @@ days have better receptivity compared to Friday - Sunday (Weekend)''')
 
     st.subheader('Price Boxplot per Category')
     ranks = df_clean.groupby("Category_name")["disc_price"].mean().fillna(0).sort_values()[::-1].index
-    ax1 = sns.boxplot( x = df_clean['disc_price'] , y = df_clean['Category_name'], orient = "h", order = ranks)
-    ax1.set(xlim = (0, 6000))
-    ax1.set(title = "Price Distribution per Category ")
-    plt.rcParams['figure.figsize'] = [60, 90]
-    plt.rcParams['font.size'] = 50
-    sns.set_style("darkgrid")
-    st.pyplot()
+    order = {"Category_name": ranks}
+    fig = px.box(df, x="disc_price", y="Category_name",
+                title="Price distribution per Category", category_orders=order, width = 3000, height = 1500)    
+    st.plotly_chart(fig, use_container_width=True)
 
 
     #Detect relevant items for analysis
@@ -326,32 +449,51 @@ days have better receptivity compared to Friday - Sunday (Weekend)''')
         st.dataframe(final_df)
 
     st.subheader('Price Distribution Plot for top selling products')
-    plt.figure(figsize=(30,50))
-    plot_number = 1
+    hist_data_combined = []
+    group_labels_combined = []
+    colors = ['#A56CC1', '#A6ACEC', '#63F5EF','#F8B195','#F67280','#C06C84', '#6C5B7B']
+
     for name, selection in df_clean.groupby('name'):
-        ax = plt.subplot(15,3, plot_number)
-        sns.distplot( df_clean.loc[df_clean.name == name, "disc_price"] , color="dodgerblue")
-        ax.set(title = name[:30], xlabel = 'Price',ylabel = 'Frequency')
-
-        # Go to the next plot for the next loop
-        plot_number = plot_number + 1
-    plt.tight_layout()
-    st.pyplot()
-
-    # Price Distribution Plot for top selling products
-    plt.figure(figsize=(30,50))
-    plot_number = 1
-    for name, selection in final_df.groupby('name'):
-        ax = plt.subplot(15,3, plot_number)
-        sns.distplot( final_df.loc[final_df.name == name, "disc_price"] , color="dodgerblue")
-        ax.set(title = name[:30], xlabel = 'Price',ylabel = 'Frequency')
-
-        # Go to the next plot for the next loop
-        plot_number = plot_number + 1
+        hist_data_combined.append(df_clean.loc[df_clean.name == name, "disc_price"])
+        group_labels_combined.append(name)
         
+        hist_data = [df_clean.loc[df_clean.name == name, "disc_price"]]
+        group_labels = [name]
+        
+        fig = ff.create_distplot(hist_data, group_labels, show_rug=False)
+        fig.update_layout(title_text= name)
+        st.plotly_chart(fig, use_container_width=True)
 
-    plt.tight_layout()
-    st.pyplot()
+    #Putting all together
+    fig = ff.create_distplot(hist_data_combined, group_labels_combined, colors=colors,
+                        bin_size=3.0, show_rug=False)
+
+    # Add title
+    fig.update_layout(title_text='Price Distribution Plot for top selling products')
+    st.plotly_chart(fig, use_container_width=True)
+
+    hist_data_combined = []
+    group_labels_combined = []
+    colors = ['#A56CC1', '#A6ACEC', '#63F5EF','#F8B195','#F67280','#C06C84', '#6C5B7B']
+
+    for name, selection in final_df.groupby('name'):
+        hist_data_combined.append(final_df.loc[final_df.name == name, "disc_price"])
+        group_labels_combined.append(name)
+        
+        hist_data = [final_df.loc[final_df.name == name, "disc_price"]]
+        group_labels = [name]
+        
+        fig = ff.create_distplot(hist_data, group_labels, show_rug=False)
+        fig.update_layout(title_text= name)
+        st.plotly_chart(fig, use_container_width=True)
+
+    #Putting all together
+    fig = ff.create_distplot(hist_data_combined, group_labels_combined, colors=colors,
+                        bin_size=3.0, show_rug=False)
+
+    # Add title
+    fig.update_layout(title_text='Price Distribution Plot for top selling products')
+    st.plotly_chart(fig, use_container_width=True)
 
     #Product Summaries
     def summary2(name):
@@ -369,39 +511,32 @@ days have better receptivity compared to Friday - Sunday (Weekend)''')
     color = ['b-', 'g-', 'r-', 'y-', 'm-', 'c-', 'k-']
     st.subheader('Price Distribution Plots')
     def price_distribution_chart_overall(top_products):
-        count = 0
+        fig = go.Figure()
+        
         for name in top_products:
             name_df = summary2(name)
-            plt.plot(name_df.UnitPrice, name_df.Quantity, color[count], label=name )
-            count += 1
-            
-        plt.legend(loc='best')
-        plt.show()
-        st.pyplot()
+            fig.add_trace(go.Scatter(y=name_df['Quantity'], x= name_df['UnitPrice'], mode = 'lines', name = name))
+        st.plotly_chart(fig, use_container_width=True)
+
     price_distribution_chart_overall(top_products)
 
     st.subheader('Effect of Day of Week on Quantity Sold')
     def day_df2(data,name):
-        day_qty = pd.DataFrame(data[data['name'] == name].groupby('Day_n').size().reset_index())
-        day_qty.columns = ['day','quantity']
+        order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_qty = pd.DataFrame(data[data['name'] == name].groupby('Day_n').size().reindex(order))
+        day_qty.columns = ['quantity']
         return day_qty
 
-    color = ['blue', 'green', 'red', 'yellow', 'magenta', 'cyan', 'black']
+
     def day_bar_overall(top_products):
-        fig = plt.figure(figsize=(15, 10))
-        count = 0
+        data = []
         for name in top_products:
-            ax = fig.add_subplot(111)
-            order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
             day_qty = day_df2(final_df,name)
-            st.dataframe(day_qty)
-            ax.bar(x= order, height=day_qty.set_index('day').loc[order].quantity, color = color[count], align='center', alpha = 0.5)
-            count += 1
-        plt.legend()
-        plt.tight_layout()
-        plt.title("Day of week of highest purchase") 
-        plt.show()
-        st.pyplot()
+            data.append(go.Bar(name = name, x=day_qty.index, y= day_qty['quantity']))
+        
+        fig = go.Figure(data)
+        fig.update_layout(barmode = 'stack')
+        st.plotly_chart(fig, use_container_width=True)
         st.text('''Slight spike on Tuesdays across all products. Sales increase from 
 Friday to Sunday generally, indicating the weekend might be a good time to conduct sales.''')
 
@@ -417,21 +552,14 @@ Friday to Sunday generally, indicating the weekend might be a good time to condu
     
 
     def bar_chart_hour_overall(top_products):
-        fig = plt.figure(figsize=(15, 10))
-        count = 0
+        data = []
         for name in top_products:
-            ax = fig.add_subplot(111)
             hr_qty_df = df_hour_quantity2(final_df, name)
-            st.dataframe(hr_qty_df)
-            ax.bar(x= hr_qty_df['hour'], height=hr_qty_df['quantity'], color = color[count], align='center', alpha = 0.5)
-            count += 1
-        plt.legend()
-        plt.tight_layout()
-        plt.xlabel("Hour") 
-        plt.ylabel("Quantity")
-        plt.title("Hour of highest purchase") 
-        plt.show()
-        st.pyplot()
+            data.append(go.Bar(name = name, x=hr_qty_df['hour'], y= hr_qty_df['quantity']))
+        
+        fig = go.Figure(data)
+        fig.update_layout(barmode = 'stack')
+        st.plotly_chart(fig, use_container_width=True)
         st.text('''Sales remain high even in the wee hours, indicating people might be 
 increasingly scrolling through sites and making purchases at late hours. This supports a 
 study by John Lewis Partnership Card and released by BBC that "More consumers seem to be 
@@ -450,20 +578,14 @@ we find that 3pm and 5pm have higher levels of purchase too for most products'''
         return month_qty
 
     def bar_chart_month_overall(top_products):
-        fig = plt.figure(figsize=(15, 10))
-        count = 0
+        data = []
         for name in top_products:
-            ax = fig.add_subplot(111)
             month_qty_df = df_month_quantity(final_df, name)
-            ax.bar(x= month_qty_df['month'], height=month_qty_df['quantity'], color = color[count], align='center', alpha = 0.5)
-            count += 1
-        plt.legend()
-        plt.tight_layout()
-        plt.xlabel("Month") 
-        plt.ylabel("Quantity")
-        plt.title("Month of highest purchase") 
-        plt.show()
-        st.pyplot()
+            data.append(go.Bar(name = name, x=month_qty_df['month'], y= month_qty_df['quantity']))
+        
+        fig = go.Figure(data)
+        fig.update_layout(barmode = 'stack')
+        st.plotly_chart(fig, use_container_width=True)
         st.text('''Based on this data from March till December, we can see that there are generally 
 higher number of purchases in months July and August for each item. We can attribute this 
 to the holiday season coming to an end, where both students & working adults get back to 

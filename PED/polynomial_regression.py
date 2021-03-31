@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 
 #Function Definitions
 
-@st.cache(ttl = 3600)
+@st.cache()
 def read_file():
     data = pd.read_csv('data.csv', encoding = 'ISO-8859-1')
     return data
@@ -95,7 +95,7 @@ def statistics(degree, X_train, X_test, y_train, y_test):
 def display_regression_plot(data):
     st.subheader("Regression Plot")
     fig = sns.pairplot(data, kind = 'reg', height = 10, x_vars = ['UnitPrice'], y_vars = ['Quantity'])
-    st.pyplot(fig)
+    st.pyplot()
 
 def data_transformation_standardisation(data, stockID):
     data_selected = data[data['StockCode'] == stockID]
@@ -137,7 +137,7 @@ def calculate_PED(data, y_train, X_train, X_test, y_test, newDict, newDict2, des
     newDict2['Item'].append(description)
     newDict2['R Squared Value'].append(stats[-1])
 
-@st.cache(ttl = 3600, suppress_st_warning=True)
+@st.cache(suppress_st_warning=True)
 def app():
     st.title('Polynomial Regression Analysis')
     st.write('''

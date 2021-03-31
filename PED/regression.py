@@ -5,6 +5,7 @@ import seaborn as sns
 from matplotlib.pyplot import figure
 import streamlit as st
 from PIL import Image
+import altair as alt
 
 from statsmodels.compat import lzip
 import numpy as np
@@ -16,7 +17,7 @@ from statsmodels.formula.api import ols
 # Image.MAX_IMAGE_PIXELS = None
 
 #Function Definition
-@st.cache(ttl = 3600)
+@st.cache()
 def read_file(filename):
     plt.rcParams["figure.figsize"] = (12,8)
     data = pd.read_csv(filename, encoding = 'ISO-8859-1')
@@ -137,10 +138,9 @@ def PED1(data):
     newDict['Price Elasticity of Demand'] = price_elasticity
     
     return pd.DataFrame(newDict)
-@st.cache(ttl = 3600, suppress_st_warning=True)
+@st.cache(suppress_st_warning=True)
 def app():
     st.title('Regression Analysis')
-    st.set_option('deprecation.showPyplotGlobalUse', False)
     data = read_file('data.csv')
     data = data[(data['Quantity']> 0) & (data['UnitPrice'] > 0)]
     data['InvoiceDate']= pd.to_datetime(data['InvoiceDate']) #converting column invoicedate to datetime format
