@@ -340,9 +340,8 @@ def app():
 
     product = st.selectbox('Pick a product', options = list_of_products, key = 1)
 
-    id = name_map1[product]
-
-    st.header("Household Product: "+product)
+    id = name_map1[product] #Workaround for Household products now, will add in electronic products when Theen is done
+    
     st.subheader('Price Percentile Distribution')
     price_chart(data,id)
 
@@ -350,15 +349,13 @@ def app():
     quartile_barchart(data, id)
 
     st.subheader('Quantity of Items Sold per Day')
-    st.write(day_df(data,id)) 
-    # st.dataframe(day_df(data,id))
+    st.dataframe(day_df(data,id))
 
     st.subheader('Bar Chart of Items Sold per Day')
     day_bar(data, id)
 
     st.subheader('Price Distribution per Date & Time')
-    st.write(df_datepricequantity(data,id)) 
-    # st.dataframe(df_datepricequantity(data,id))
+    st.dataframe(df_datepricequantity(data,id))
     
     st.subheader('Price Distribution Chart')
     price_distribution_chart(data, id)
@@ -370,13 +367,12 @@ def app():
     boxplot_day(data, id)
 
     st.subheader('Number of items sold per hour')
-    st.write(df_hour_quantity(data,id)) 
-    # st.dataframe(df_hour_quantity(data, id))
+    st.dataframe(df_hour_quantity(data, id))
     bar_chart_hour(df_hour_quantity(data, id))
 
     st.subheader('Quantity of items Sold per Date & Time')
-    st.write(df_date_quantity(data, id).sort_values(by=['quantity'])) 
-    # st.dataframe(df_date_quantity(data, id).sort_values(by=['quantity']))
+    st.dataframe(df_date_quantity(data, id).sort_values(by=['quantity']))
     bar_chart_date(df_date_quantity(data, id))
+
 
 
