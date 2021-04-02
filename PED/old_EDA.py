@@ -354,8 +354,6 @@ def app():
         st.subheader('Distribution of price per day')
         boxplot_day(data, id)
         st.text(product_descriptions[4])
-        # st.subheader('Trends in Pricing Strategy')
-        # rolling_mean(data, id)
         st.text(product_descriptions[5])
         st.subheader('Number of items sold per hour')
         st.dataframe(df_hour_quantity(data, id))
