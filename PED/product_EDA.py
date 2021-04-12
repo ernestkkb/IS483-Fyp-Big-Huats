@@ -38,14 +38,18 @@ def summary(pid, data):
     grouping_df.columns = ['UnitPrice','Quantity']
     return pd.DataFrame(grouping_df)
 
-def df_datepricequantity(data, stockID):
-    date_price_qty = data[data['StockCode'] == stockID].groupby([data[data['StockCode'] == stockID].index, 'UnitPrice']).size()
+def df_datepricequantity(data, stockID, identifier, col1):
+    date_price_qty = data[data[identifier] == stockID].groupby([data[data[identifier] == stockID].index, col1]).size()
     date_price_qty_df = date_price_qty.to_frame().reset_index()
     date_price_qty_df.columns = ['dates', 'price', 'quantity']
     return date_price_qty_df
 
-def price_distribution_chart(data, stockID):
-    data_selected = data[data['StockCode'] == stockID]
+def price_distribution_chart(data, stockID, column, identifier):
+
+    # if(identifier == 'name'):
+    #     data = data.set_index('Date_imp')
+
+    data_selected = data[data[identifier] == stockID]
     
     fig = figure(
             title = "Price Distribution Chart",
@@ -56,7 +60,7 @@ def price_distribution_chart(data, stockID):
              x_axis_type='datetime'
             )
 
-    fig.line(data_selected.index,data_selected['UnitPrice'],
+    fig.line(data_selected.index,data_selected[column],
              line_alpha = 0.8,
              line_width = 2
             )
@@ -69,8 +73,8 @@ def price_distribution_chart(data, stockID):
 
     st.bokeh_chart(fig, use_container_width=True)
 
-def boxplot_month(data, stockID):
-    df =data[data['StockCode'] == stockID]
+def boxplot_month(data, stockID, identifier, col1, col2):
+    df =data[data[identifier] == stockID]
     fig = go.Figure()
 
     fig.update_layout(
@@ -83,13 +87,13 @@ def boxplot_month(data, stockID):
             color="#0E0D0C"
         )
     )
-    fig.add_trace(go.Box(y=df['UnitPrice'], x=df['Month'])) 
+    fig.add_trace(go.Box(y=df[col1], x=df[col2])) 
     st.plotly_chart(fig, use_container_width=True)
 
-def boxplot_day(data, stockID):
-    order = {"Weekday Name": ['Monday', 'Tuesday', 'Wednesday','Thursday','Friday','Saturday','Sunday']}
-    df =data[data['StockCode'] == stockID]
-    fig = px.box(df, x="Weekday Name", y="UnitPrice",
+def boxplot_day(data, stockID, identifer, col, col2):
+    order = {col: ['Monday', 'Tuesday', 'Wednesday','Thursday','Friday','Saturday','Sunday']}
+    df =data[data[identifer] == stockID]
+    fig = px.box(df, x=col, y=col2,
             #  title="Distribution of price per day",
             category_orders=order)    
     st.plotly_chart(fig, use_container_width=True)
@@ -108,8 +112,14 @@ def rolling_mean(data, stockID):
     ax.set_title('Trends in Price Strategy');
     st.pyplot()
 
-def df_hour_quantity(data, stockID):
-    hr_qty = data[data['StockCode'] == stockID].groupby('Hour').size()
+def df_hour_quantity(data, stockID, identifier):
+
+    if(identifier) == 'name':
+        groupbycolumn = 'hour'
+    else:
+        groupbycolumn = 'Hour'
+        
+    hr_qty = data[data[identifier] == stockID].groupby(groupbycolumn).size()
     hr_qty_df = hr_qty.to_frame().reset_index()
     hr_qty_df.columns = ['hour', 'quantity']
     return hr_qty_df
@@ -137,9 +147,15 @@ def bar_chart_hour(hr_qty_df):
 
     st.bokeh_chart(p, use_container_width=True)
 
-def df_date_quantity(data, stockID):
-    date_qty = pd.DataFrame(data[data['StockCode'] == stockID].groupby(data[data['StockCode'] == stockID].index).size().reset_index())
+def df_date_quantity(data, stockID, identifier):
+
+    if(identifier == 'name'):
+        date_qty = pd.DataFrame(data[data[identifier] == stockID].groupby('Date_imp_d').size().reset_index())
+    else:
+        date_qty = pd.DataFrame(data[data[identifier] == stockID].groupby(data[data[identifier] == stockID].index).size().reset_index())
+
     date_qty.columns = ['dates','quantity']
+
     return date_qty
 
 def bar_chart_date(date_qty):
@@ -174,8 +190,8 @@ def bar_chart_date(date_qty):
 
     st.bokeh_chart(p, use_container_width=True)
 
-def price_chart(data, stockID):
-    percentiles = data[data['StockCode'] == stockID]['UnitPrice'].quantile([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, .9, 0.95, 1 ])
+def price_chart(data, stockID, identifier, col):
+    percentiles = data[data[identifier] == stockID][col].quantile([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, .9, 0.95, 1 ])
     
     fig = figure(title = "Price Percentile Distribution",
              x_axis_label = 'Percentile',
@@ -196,9 +212,9 @@ def price_chart(data, stockID):
     
     st.bokeh_chart(fig, use_container_width=True)
 
-def quartile_barchart(data, stockID):
-    data = data[data['StockCode'] == stockID]
-    data['Quantile'] = pd.qcut(data['UnitPrice'], q=np.arange(0,1.1,0.1), duplicates='drop')
+def quartile_barchart(data, stockID, identifier, col1):
+    data = data[data[identifier] == stockID]
+    data['Quantile'] = pd.qcut(data[col1], q=np.arange(0,1.1,0.1), duplicates='drop')
     df_tempo = pd.DataFrame(data.groupby('Quantile').agg('size').reset_index())
     df_tempo.columns = ['Quantile','Quantity']
     
@@ -222,14 +238,14 @@ def quartile_barchart(data, stockID):
 
     st.bokeh_chart(p, use_container_width=True)
 
-def day_df(data,stockID):
+def day_df(data,stockID, identifier, groupbycol):
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday"]
-    day_qty = pd.DataFrame(data[data['StockCode'] == stockID].groupby('Weekday Name').size().reindex(order))
+    day_qty = pd.DataFrame(data[data[identifier] == stockID].groupby(groupbycol).size().reindex(order))
     day_qty.columns = ['quantity']
     return day_qty
 
-def day_bar(data, stockID):
-    day_qty = day_df(data,stockID)
+def day_bar(data, stockID, identifier, groupbycol):
+    day_qty = day_df(data,stockID, identifier, groupbycol)
 
     weekday = day_qty.index.tolist()
     quantity = day_qty['quantity']
@@ -329,50 +345,81 @@ def app():
                         'JUMBO BAG RED RETROSPOT',
                         'WHITE HANGING HEART T-LIGHT HOLDER',
                         'RABBIT NIGHT LIGHT',
-                        'SMALL POPCORN HOLDER']
-                        # 'JBL Clip2 Portable Speaker',
-                        # 'Yamaha - Natural Sound 5 2-Way All-Weather Outdoor Speakers (Pair) - White"', 
-                        # 'Russound - Acclaim 5 Series 6-1/2 2-Way Indoor/Outdoor Speakers (Pair) - White"',
-                        # 'MCR-B043 30W Bluetooth Wireless Music System (Black)',
-                        # 'Kicker DSC44 4 D-Series 2-Way Car Speakers with 1/2" Tweeters"',
-                        # 'Alpine - 6-1/2 2-Way Component Car Speakers with Poly-Mica Cones (Pair) - Black"',
-                        # 'Details About Alpine 400w 5.25 Typee Coaxial 2way Car Speakers | Spe5000"']
+                        'SMALL POPCORN HOLDER',
+                        'JBL Clip2 Portable Speaker',
+                        'Yamaha - Natural Sound 5 2-Way All-Weather Outdoor Speakers (Pair) - White"', 
+                        'Russound - Acclaim 5 Series 6-1/2 2-Way Indoor/Outdoor Speakers (Pair) - White"',
+                        'MCR-B043 30W Bluetooth Wireless Music System (Black)',
+                        'Kicker DSC44 4 D-Series 2-Way Car Speakers with 1/2" Tweeters"',
+                        'Alpine - 6-1/2 2-Way Component Car Speakers with Poly-Mica Cones (Pair) - Black"',
+                        'Details About Alpine 400w 5.25 Typee Coaxial 2way Car Speakers | Spe5000"']
 
     product = st.selectbox('Pick a product', options = list_of_products, key = 1)
 
-    id = name_map1[product] #Workaround for Household products now, will add in electronic products when Theen is done
-    
-    st.subheader('Price Percentile Distribution')
-    price_chart(data,id)
+    if product not in top_products2:
+        id = name_map1[product] 
+        
+        st.subheader('Price Percentile Distribution')
+        price_chart(data,id, 'StockCode', 'UnitPrice')
 
-    st.subheader('Histogram by Price Percentiles')
-    quartile_barchart(data, id)
+        st.subheader('Histogram by Price Percentiles')
+        quartile_barchart(data, id, 'StockCode', 'UnitPrice')
 
-    st.subheader('Quantity of Items Sold per Day')
-    st.dataframe(day_df(data,id))
+        st.subheader('Quantity of Items Sold per Day')
+        st.dataframe(day_df(data,id, 'StockCode', 'Weekday Name'))
 
-    st.subheader('Bar Chart of Items Sold per Day')
-    day_bar(data, id)
+        st.subheader('Bar Chart of Items Sold per Day')
+        day_bar(data, id, 'StockCode', 'Weekday Name')
 
-    st.subheader('Price Distribution per Date & Time')
-    st.dataframe(df_datepricequantity(data,id))
-    
-    st.subheader('Price Distribution Chart')
-    price_distribution_chart(data, id)
+        st.subheader('Price Distribution per Date & Time')
+        st.dataframe(df_datepricequantity(data,id, 'StockCode', 'UnitPrice'))
+        
+        st.subheader('Price Distribution Chart')
+        price_distribution_chart(data, id, 'UnitPrice', 'StockCode')
 
-    st.subheader('Distribution of price per month')
-    boxplot_month(data, id)
+        st.subheader('Distribution of price per month')
+        boxplot_month(data, id, 'StockCode', 'UnitPrice', 'Month')
 
-    st.subheader('Distribution of price per day')
-    boxplot_day(data, id)
+        st.subheader('Distribution of price per day')
+        boxplot_day(data, id, 'StockCode', 'Weekday Name', 'UnitPrice')
 
-    st.subheader('Number of items sold per hour')
-    st.dataframe(df_hour_quantity(data, id))
-    bar_chart_hour(df_hour_quantity(data, id))
+        st.subheader('Number of items sold per hour')
+        st.dataframe(df_hour_quantity(data, id, 'StockCode'))
+        bar_chart_hour(df_hour_quantity(data, id,'StockCode'))
 
-    st.subheader('Quantity of items Sold per Date & Time')
-    st.dataframe(df_date_quantity(data, id).sort_values(by=['quantity']))
-    bar_chart_date(df_date_quantity(data, id))
+        st.subheader('Quantity of items Sold per Date & Time')
+        st.dataframe(df_date_quantity(data, id, 'StockCode').sort_values(by=['quantity']))
+        bar_chart_date(df_date_quantity(data, id, 'StockCode'))
 
+    else:
+        st.subheader('Price Percentile Distribution')
+        price_chart(df,product, 'name', 'disc_price')
 
+        st.subheader('Histogram by Price Percentiles')
+        quartile_barchart(df, product, 'name', 'disc_price')
 
+        st.subheader('Quantity of Items Sold per Day')
+        st.dataframe(day_df(df,product, 'name', 'Day_n'))
+
+        st.subheader('Bar Chart of Items Sold per Day')
+        day_bar(df, product, 'name', 'Day_n')
+        
+        st.subheader('Price Distribution per Date & Time')
+        st.dataframe(df_datepricequantity(df,product, 'name', 'disc_price'))
+
+        st.subheader('Price Distribution Chart')
+        price_distribution_chart(df, product, 'disc_price', 'name')
+
+        st.subheader('Distribution of price per month')
+        boxplot_month(df, product, 'name', 'disc_price', 'month')
+
+        st.subheader('Distribution of price per day')
+        boxplot_day(df, product, 'name', 'Day_n', 'disc_price')
+
+        st.subheader('Number of items sold per hour')
+        st.dataframe(df_hour_quantity(df, product, 'name'))
+        bar_chart_hour(df_hour_quantity(df, product,'name'))
+
+        st.subheader('Quantity of items Sold per Date & Time')
+        st.dataframe(df_date_quantity(df, product, 'name').sort_values(by=['quantity']))
+        bar_chart_date(df_date_quantity(df, product, 'name'))
