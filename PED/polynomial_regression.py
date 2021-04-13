@@ -111,7 +111,7 @@ def statistics(degree, X_train, X_test, y_train, y_test):
     return [slope[0][1], rmse_train, r2_train, rmse_test, r2_test]
 
 def display_regression_plot(data):
-    fig = px.scatter(data, x="UnitPrice", y="Quantity", trendline="lowess")
+    fig = px.scatter(data, x="UnitPrice", y="Quantity", trendline="ols")
     st.plotly_chart(fig, use_container_width=True)
 
 def data_transformation_standardisation(data, stockID):
@@ -213,15 +213,6 @@ def app():
 
 ################################################################################################################################ Data Preprocessing for Household Products ####################################################################################
     data = data[(data['Quantity']> 0) & (data['UnitPrice'] > 0)]
-    data = data.reindex(data.index.repeat(data.Quantity)) #multiply the quantity of items to expand the number of rows
-    data['InvoiceDate']= pd.to_datetime(data['InvoiceDate']) #converting column invoice date to datetime format
-    data = data.set_index('InvoiceDate') #setting date as an index for the dataframe
-
-    #Adding additional time-based columns
-    data['Year'] = data.index.year
-    data['Month'] = data.index.month
-    data['Weekday Name'] = data.index.day_name()
-    data['Hour'] = data.index.hour
 
     #Remove Outlier
     from scipy import stats

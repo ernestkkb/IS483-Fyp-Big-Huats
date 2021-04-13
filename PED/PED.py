@@ -12,11 +12,16 @@ import plotly.express as px
 import plotly.figure_factory as ff
 
 from statsmodels.compat import lzip
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
 from bokeh.plotting import figure, output_notebook, show
 from bokeh.models.tools import HoverTool
@@ -44,7 +49,55 @@ def summary2(name, data):
         grouping_df.columns = ['UnitPrice','Quantity']
         return pd.DataFrame(grouping_df)
 
-def PED(data):
+
+def data_transformation_standardisation(data, stockID):
+    data_selected = data[data['StockCode'] == stockID]
+
+    #Transform Skewed Columns
+    data_selected['Quantity'] = np.log(data_selected['Quantity'])
+    data_selected['UnitPrice'] = np.log(data_selected['UnitPrice'])
+    data_selected = data_selected[['Quantity','UnitPrice']]
+
+
+    #Standardisation of Scales
+    scaler = StandardScaler()
+    scaler.fit(data_selected)
+    scaler.fit_transform(data_selected)
+    data_scaled= scaler.transform(data_selected)
+    data_prepared=pd.DataFrame(data_scaled, columns=data_selected.columns)
+
+    return data_prepared
+
+def statistics(degree, X_train, X_test, y_train, y_test):
+
+    poly_features = PolynomialFeatures(degree=degree)
+
+    # transforms the existing features to higher degree features.
+    X_train_poly = poly_features.fit_transform(X_train)
+
+    # fit the transformed features to Linear Regression
+    poly_model = LinearRegression()
+    poly_model.fit(X_train_poly, y_train)
+
+    # predicting on training data-set
+    y_train_predicted = poly_model.predict(X_train_poly)
+
+    # predicting on test data-set
+    y_test_predict = poly_model.predict(poly_features.fit_transform(X_test))
+
+    # evaluating the model on training dataset
+    rmse_train = np.sqrt(mean_squared_error(y_train, y_train_predicted))
+    r2_train = r2_score(y_train, y_train_predicted)
+
+    # evaluating the model on test dataset
+    rmse_test = np.sqrt(mean_squared_error(y_test, y_test_predict))
+    r2_test = r2_score(y_test, y_test_predict)
+    
+    slope = poly_model.coef_
+    
+    return [slope[0][1], rmse_train, r2_train, rmse_test, r2_test]
+
+def PED(data, name_map, chosen):
     
     newDict = {
         'Item': [],
@@ -52,19 +105,31 @@ def PED(data):
     }
     
     chosen = ['23166', '85099B', '85123A', '23084', '22197']
-    
-    for stockID in chosen:
-        data_modified = data[data['StockCode'] == stockID]
 
-        model = ols("np.log(Quantity) ~ np.log(UnitPrice)", data = data_modified).fit()
-        intercept, slope = model.params
-        mean_price = np.mean(data_modified['UnitPrice'])
-        mean_quantity = np.mean(data_modified['Quantity'])
+    i=0
+    test_size = [0.4, 0.2, 0.2, 0.2, 0.2]
+
+    for stockID in chosen:
+        data_prepared = data_transformation_standardisation(data,stockID)
+
+        X = data_prepared[['UnitPrice']]
+        y = data_prepared[['Quantity']]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = test_size[i], random_state = 101)
+
+        mod = sm.OLS(y_train, X_train)
+
+        stats = statistics(2, X_train, X_test, y_train, y_test)
+        slope = stats[0]
+
+        mean_price = np.mean(data[data['StockCode'] == stockID]['UnitPrice'])
+        mean_quantity = np.mean(data[data['StockCode'] == stockID]['Quantity'])
 
         price_elasticity = abs((slope) * (mean_price/mean_quantity))
 
-        newDict['Item'].append(data_modified.iloc[0]['Description'])
+        newDict['Item'].append(name_map[stockID])
         newDict['Price Elasticity of Demand'].append(price_elasticity)
+        i+=1
         
     return pd.DataFrame(newDict)
 
@@ -118,15 +183,6 @@ def app():
     df = read_file('category_price.csv')
 ################################################################################################################################ Data Preprocessing for Household Products ####################################################################################
     data = data[(data['Quantity']> 0) & (data['UnitPrice'] > 0)]
-    data = data.reindex(data.index.repeat(data.Quantity)) #multiply the quantity of items to expand the number of rows
-    data['InvoiceDate']= pd.to_datetime(data['InvoiceDate']) #converting column invoice date to datetime format
-    data = data.set_index('InvoiceDate') #setting date as an index for the dataframe
-
-    #Adding additional time-based columns
-    data['Year'] = data.index.year
-    data['Month'] = data.index.month
-    data['Weekday Name'] = data.index.day_name()
-    data['Hour'] = data.index.hour
 
     #Remove Outlier
     from scipy import stats
@@ -167,7 +223,7 @@ def app():
     final_df = pd.concat(frames)
 ################################################################################################################################ Displaying of graphs ####################################################################################
     if(product == 'Household'):
-        ped_df = PED(data)
+        ped_df = PED(data, name_map, top_products1)
         st.dataframe(ped_df)
 
         ped = ped_df['Price Elasticity of Demand']

@@ -218,11 +218,7 @@ def app():
 
 ################################################################################################################################ Data Preprocessing for Household Products ####################################################################################
     data = data[(data['Quantity']> 0) & (data['UnitPrice'] > 0)]
-    #Remove Outlier
-    from scipy import stats
-    data = data[(np.abs(stats.zscore(data['Quantity'])) < 3)]
 
-    data = data.reindex(data.index.repeat(data.Quantity)) #multiply the quantity of items to expand the number of rows
     data['InvoiceDate']= pd.to_datetime(data['InvoiceDate']) #converting column invoice date to datetime format
     data = data.set_index('InvoiceDate') #setting date as an index for the dataframe
 
@@ -231,6 +227,10 @@ def app():
     data['Month'] = data.index.month
     data['Weekday Name'] = data.index.day_name()
     data['Hour'] = data.index.hour
+
+    #Remove Outlier
+    from scipy import stats
+    data = data[(np.abs(stats.zscore(data['Quantity'])) < 3)]
 ################################################################################################################################ Data Preprocessing for Electronic Products ####################################################################################
     df['Date_imp'] = pd.to_datetime(df['Date_imp'], format='%Y-%m-%d %H:%M:%S')
     df['hour'] = df['Date_imp'].dt.hour
