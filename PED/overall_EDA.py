@@ -21,13 +21,10 @@ from bokeh.transform import cumsum
 ################################################################################################################################ Function Definitions ####################################################################################
 @st.cache(allow_output_mutation=True)
 def read_file(filename):
-
-    if(filename == "data.csv"):
+    if(filename == 'data.csv'):
         data = pd.read_csv(filename, encoding = 'ISO-8859-1')
-
     else:
         data = pd.read_csv(filename)
-
     return data
 
 def df_hour_quantity(data, stockID):
@@ -79,12 +76,12 @@ def price_distribution_chart_overall(top_products, data, name_map = None):
             fig.add_trace(go.Scatter(y=name_df['Quantity'], x= name_df['UnitPrice'], mode = 'lines', name = name))
         st.plotly_chart(fig, use_container_width=True)
 
+
 def day_df2(data,name):
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     day_qty = pd.DataFrame(data[data['name'] == name].groupby('Day_n').size().reindex(order))
     day_qty.columns = ['quantity']
     return day_qty
-
 
 def day_bar_overall(top_products, data, name_map = None):
     update = []
@@ -119,7 +116,6 @@ def df_hour_quantity2(data, name):
     hr_qty_df.columns = ['hour', 'quantity']
     return hr_qty_df
 
-    
 def bar_chart_hour_overall(top_products, data, name_map = None):
     update = []
 
@@ -145,11 +141,13 @@ def bar_chart_hour_overall(top_products, data, name_map = None):
         fig = go.Figure(update, layout = layout)
         fig.update_layout(barmode = 'stack')
         st.plotly_chart(fig, use_container_width=True)
-    
+
+
 def df_month_quantity2(data, name):
     month_qty = pd.DataFrame(data[data['name'] == name].groupby('month').size()).reset_index()
     month_qty.columns = ['month','quantity']
     return month_qty
+
 
 def df_month_quantity(data, stockID):
     mth_qty = data[data['StockCode'] == stockID].groupby('Month').size()
@@ -183,7 +181,8 @@ def bar_chart_month_overall(top_products, data, name_map = None):
         fig.update_layout(barmode = 'stack')
         st.plotly_chart(fig, use_container_width=True)
 ################################################################################################################################ Function Definitions ####################################################################################
-#Reading both files 
+#Reading both files
+
 def app():
     data = read_file('data.csv')
     top_products1 = ['23166', '85099B', '85123A', '23084', '22197']
