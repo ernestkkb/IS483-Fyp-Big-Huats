@@ -199,7 +199,10 @@ def app():
     st.dataframe(main)
     for index, row in main.iterrows():
         difference_dict['Item'].append(row['Item'])
-        difference_dict['Difference %'].append(((row['PED (Overall)'] - row['PED (No Campaign)'])/ row['PED (Overall)']) * 100)
+        overall = row['PED (Overall)']
+        nocampaign = row['PED (No Campaign)']
+        difference = nocampaign - overall 
+        difference_dict['Difference %'].append((difference/abs(overall))*100)
 
     campaignped = pd.DataFrame(difference_dict)
 
@@ -211,7 +214,9 @@ def app():
     source = ColumnDataSource(data=dict(item=item, difference=difference, color=Spectral3))
 
     max_y = max(difference)
-    p = figure(x_range=item, y_range=(0,max_y + max_y *0.2), plot_height=1000, title="Percentage change in PED for Campaigns",
+    min_y = min(difference)
+
+    p = figure(x_range=item, y_range=(min_y + min_y * 0.2 ,max_y + max_y *0.2), plot_height=1000, title="Percentage change in PED for Campaigns",
         toolbar_location=None, tools="")
 
     p.vbar(x='item', top='difference', width=0.9, color='color', source=source)

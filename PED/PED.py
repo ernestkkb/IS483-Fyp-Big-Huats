@@ -125,7 +125,7 @@ def PED(data, name_map, chosen):
         mean_price = np.mean(data[data['StockCode'] == stockID]['UnitPrice'])
         mean_quantity = np.mean(data[data['StockCode'] == stockID]['Quantity'])
 
-        price_elasticity = abs((slope) * (mean_price/mean_quantity))
+        price_elasticity = (slope) * (mean_price/mean_quantity)
 
         newDict['Item'].append(name_map[stockID])
         newDict['Price Elasticity of Demand'].append(price_elasticity)
@@ -231,7 +231,7 @@ def app():
 
         source = ColumnDataSource(data=dict(item=item, ped=ped, color=Spectral5))
 
-        max_y = max(ped)
+        max_y = min(ped)
 
         p = figure(x_range=item, y_range=(0,max_y), plot_height=500, title="PED Value of each Product",
             toolbar_location=None, tools="")
@@ -266,7 +266,7 @@ def app():
 
         source = ColumnDataSource(data=dict(item=item, ped=ped, color=Spectral7))
 
-        max_y = max(ped)
+        max_y = min(ped)
 
         p = figure(x_range=item, y_range=(0,max_y), plot_height=500, title="PED Value of each Product",
             toolbar_location=None, tools="")
